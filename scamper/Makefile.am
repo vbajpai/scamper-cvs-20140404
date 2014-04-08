@@ -24,6 +24,7 @@ libscamperfile_la_SOURCES = \
 	trace/scamper_trace_warts.c \
 	trace/scamper_trace_text.c \
 	trace/scamper_trace_json.c \
+	trace/scamper_trace_csv.c \
 	ping/scamper_ping.c \
 	ping/scamper_ping_warts.c \
 	ping/scamper_ping_text.c \
@@ -97,6 +98,7 @@ scamper_SOURCES = \
 	trace/scamper_trace_warts.c \
 	trace/scamper_trace_text.c \
 	trace/scamper_trace_json.c \
+	trace/scamper_trace_csv.c \
 	trace/scamper_trace_do.c \
 	ping/scamper_ping.c \
 	ping/scamper_ping_warts.c \
