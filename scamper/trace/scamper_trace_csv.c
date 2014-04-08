@@ -34,6 +34,7 @@ static const char rcsid[] =
 #endif
 #include "internal.h"
 
+#include "scamper.h"
 #include "scamper_addr.h"
 #include "scamper_list.h"
 #include "scamper_trace.h"
@@ -63,52 +64,47 @@ static char *stop_reason_tostr(uint8_t reason, char *buf, size_t len) {
   return r[reason];
 }
 
-static char *header_tostr(const scamper_trace_t *trace) {
-  char buf[512], tmp[64];
-  const char *ptr;
-  size_t off = 0;
-  time_t tt = trace->start.tv_sec;
+static char *hop_tostr(const scamper_trace_t *trace,
+                       scamper_trace_hop_t *hop) {
 
-  string_concat(buf, sizeof(buf), &off, "\"version\":\"0.1\",\"type\":\"trace\"");
-  string_concat(buf, sizeof(buf), &off, ", \"userid\":%u", trace->userid);
-  if((ptr = scamper_trace_type_tostr(trace)) != NULL)
-    string_concat(buf, sizeof(buf), &off, ", \"method\":\"%s\"", ptr);
-  else
-    string_concat(buf, sizeof(buf), &off, ", \"method\":\"%u\"", trace->type);
-  string_concat(buf, sizeof(buf), &off, ", \"src\":\"%s\"",
-		scamper_addr_tostr(trace->src, tmp, sizeof(tmp)));
-  string_concat(buf, sizeof(buf), &off, ", \"dst\":\"%s\"",
-		scamper_addr_tostr(trace->dst, tmp, sizeof(tmp)));
-  if(SCAMPER_TRACE_TYPE_IS_UDP(trace) || SCAMPER_TRACE_TYPE_IS_TCP(trace))
-    string_concat(buf, sizeof(buf), &off, ", \"sport\":%u, \"dport\":%u",
-		  trace->sport, trace->dport);
-  else if(trace->flags & SCAMPER_TRACE_FLAG_ICMPCSUMDP)
-    string_concat(buf, sizeof(buf), &off, ", \"icmp_sum\":%u", trace->dport);
-  string_concat(buf, sizeof(buf), &off,
-		", \"stop_reason\":\"%s\", \"stop_data\":%u",
-		stop_reason_tostr(trace->stop_reason, tmp, sizeof(tmp)),
-		trace->stop_data);
-  strftime(tmp, sizeof(tmp), "%Y-%m-%d %H:%M:%S", localtime(&tt));
-  string_concat(buf, sizeof(buf), &off,
-		", \"start\":{\"sec\":%u, \"usec\":%u, \"ftime\":\"%s\"}",
-		trace->start.tv_sec, trace->start.tv_usec, tmp);
-  string_concat(buf, sizeof(buf), &off,
-		", \"hop_count\":%u, \"attempts\":%u, \"hoplimit\":%u",
-		trace->hop_count, trace->attempts, trace->hoplimit);
-  string_concat(buf, sizeof(buf), &off,
-		", \"firsthop\":%u, \"wait\":%u, \"wait_probe\":%u",
-		trace->firsthop, trace->wait, trace->wait_probe);
-  string_concat(buf, sizeof(buf), &off,	", \"tos\":%u, \"probe_size\":%u",
-		trace->tos, trace->probe_size);
-
-  return strdup(buf);
-}
-
-static char *hop_tostr(scamper_trace_hop_t *hop) {
   char buf[512], tmp[128];
   size_t off = 0;
 
-  string_concat(buf, sizeof(buf), &off, "%u", hop->hop_probe_ttl);
+  string_concat(buf, sizeof(buf), &off, "SCAMPER.%s", SCAMPER_VERSION);
+
+  /* by DEFAULT 0; but can be changed using -U, perhaps a SK unit id */
+  string_concat(buf, sizeof(buf), &off, ";%u", trace->userid);
+  string_concat(buf, sizeof(buf), &off, ";%u", trace->start.tv_sec);
+
+  /*strftime(tmp, sizeof(tmp), "%Y-%m-%d %H:%M:%S", localtime(&tt));*/
+  /*string_concat(buf, sizeof(buf), &off,*/
+		/*", \"start\":{\"sec\":%u, \"usec\":%u, \"ftime\":\"%s\"}",*/
+		/*trace->start.tv_sec, trace->start.tv_usec, tmp);*/
+
+  string_concat(buf, sizeof(buf), &off, ";%s", scamper_addr_tostr(trace->src,
+        tmp, sizeof(tmp)));
+
+  string_concat(buf, sizeof(buf), &off, ";%s", scamper_addr_tostr(trace->dst,
+        tmp, sizeof(tmp)));
+
+  const char *ptr;
+  if((ptr = scamper_trace_type_tostr(trace)) != NULL)
+    string_concat(buf, sizeof(buf), &off, ";%s", ptr);
+  else
+    string_concat(buf, sizeof(buf), &off, ";%u", trace->type);
+
+  /*if(SCAMPER_TRACE_TYPE_IS_UDP(trace) || SCAMPER_TRACE_TYPE_IS_TCP(trace))*/
+    /*string_concat(buf, sizeof(buf), &off, ";%u;%u", trace->sport,*/
+        /*trace->dport);*/
+  /*else if(trace->flags & SCAMPER_TRACE_FLAG_ICMPCSUMDP)*/
+    /*string_concat(buf, sizeof(buf), &off, ";%u", trace->dport);*/
+
+  string_concat(buf, sizeof(buf), &off, ";%s",
+      stop_reason_tostr(trace->stop_reason, tmp, sizeof(tmp)));
+
+  /*string_concat(buf, sizeof(buf), &off, "%u", trace->stop_data);*/
+
+  string_concat(buf, sizeof(buf), &off, ";%u", hop->hop_probe_ttl);
 
   string_concat(buf, sizeof(buf), &off,	";%s",
       scamper_addr_tostr(hop->hop_addr, tmp, sizeof(tmp)));
@@ -145,6 +141,17 @@ static char *hop_tostr(scamper_trace_hop_t *hop) {
     /*string_concat(buf, sizeof(buf), &off, ";%u", hop->hop_tcp_flags); */
   }
 
+  /*string_concat(buf, sizeof(buf), &off,*/
+		/*", \"hop_count\":%u, \"attempts\":%u, \"hoplimit\":%u",*/
+		/*trace->hop_count, trace->attempts, trace->hoplimit);*/
+
+  /*string_concat(buf, sizeof(buf), &off,*/
+		/*", \"firsthop\":%u, \"wait\":%u, \"wait_probe\":%u",*/
+		/*trace->firsthop, trace->wait, trace->wait_probe);*/
+
+  /*string_concat(buf, sizeof(buf), &off,	", \"tos\":%u, \"probe_size\":%u",*/
+		/*trace->tos, trace->probe_size);*/
+
   return strdup(buf);
 }
 
@@ -175,7 +182,7 @@ int scamper_file_csv_trace_write(const scamper_file_t *sf,
     for(i=trace->firsthop-1, j=0; i<trace->hop_count; i++) {
       for(hop = trace->hops[i]; hop != NULL; hop = hop->hop_next) {
 	      if(j > 0) len++; /* , */
-	      if((hops[j] = hop_tostr(hop)) == NULL) goto cleanup;
+	      if((hops[j] = hop_tostr(trace, hop)) == NULL) goto cleanup;
 	      len += strlen(hops[j]);
         puts(hops[j]);
 	      j++;
