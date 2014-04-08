@@ -41,53 +41,9 @@ static const char rcsid[] =
 #include "scamper_trace_csv.h"
 #include "utils.h"
 
-static char *hop_tostr(scamper_trace_hop_t *hop)
-{
-  char buf[512], tmp[128];
-  size_t off = 0;
+#include <stdlib.h>
 
-  string_concat(buf, sizeof(buf), &off,	"{\"addr\":\"%s\"",
-		scamper_addr_tostr(hop->hop_addr, tmp, sizeof(tmp)));
-  string_concat(buf, sizeof(buf), &off,
-		", \"probe_ttl\":%u, \"probe_id\":%u, \"probe_size\":%u", 
-		hop->hop_probe_ttl, hop->hop_probe_id, hop->hop_probe_size);
-  string_concat(buf, sizeof(buf), &off, ", \"rtt\":%s",
-		timeval_tostr(&hop->hop_rtt, tmp, sizeof(tmp)));
-  string_concat(buf, sizeof(buf), &off,
-		", \"reply_ttl\":%u, \"reply_tos\":%u, \"reply_size\":%u",
-		hop->hop_reply_ttl, hop->hop_reply_tos, hop->hop_reply_size);
-  string_concat(buf, sizeof(buf), &off,	", \"reply_ipid\":%u",
-		hop->hop_reply_ipid);
-
-  if(SCAMPER_TRACE_HOP_IS_ICMP(hop))
-    {
-      string_concat(buf, sizeof(buf), &off,
-		    ", \"icmp_type\":%u, \"icmp_code\":%u",
-		    hop->hop_icmp_type, hop->hop_icmp_code);
-      if(SCAMPER_TRACE_HOP_IS_ICMP_Q(hop))
-	{
-	  string_concat(buf, sizeof(buf), &off,
-			", \"icmp_q_ttl\":%u, \"icmp_q_ipl\":%u",
-			hop->hop_icmp_q_ttl, hop->hop_icmp_q_ipl);
-	  if(SCAMPER_ADDR_TYPE_IS_IPV4(hop->hop_addr))
-	    string_concat(buf, sizeof(buf), &off, ", \"icmp_q_tos\":%u",
-			  hop->hop_icmp_q_tos);
-	}
-      if(SCAMPER_TRACE_HOP_IS_ICMP_PTB(hop))
-	string_concat(buf, sizeof(buf), &off, ", \"icmp_nhmtu:\":%u",
-		      hop->hop_icmp_nhmtu);
-    }
-  else
-    {
-      string_concat(buf, sizeof(buf), &off,
-		    ", \"tcp_flags\":%u", hop->hop_tcp_flags);
-    }
-  string_concat(buf, sizeof(buf), &off, "}");
-  return strdup(buf);
-}
-
-static char *stop_reason_tostr(uint8_t reason, char *buf, size_t len)
-{
+static char *stop_reason_tostr(uint8_t reason, char *buf, size_t len) {
   static char *r[] = {
     "NONE",
     "COMPLETED",
@@ -107,8 +63,7 @@ static char *stop_reason_tostr(uint8_t reason, char *buf, size_t len)
   return r[reason];
 }
 
-static char *header_tostr(const scamper_trace_t *trace)
-{
+static char *header_tostr(const scamper_trace_t *trace) {
   char buf[512], tmp[64];
   const char *ptr;
   size_t off = 0;
@@ -149,9 +104,53 @@ static char *header_tostr(const scamper_trace_t *trace)
   return strdup(buf);
 }
 
+static char *hop_tostr(scamper_trace_hop_t *hop) {
+  char buf[512], tmp[128];
+  size_t off = 0;
+
+  string_concat(buf, sizeof(buf), &off, "%u", hop->hop_probe_ttl);
+
+  string_concat(buf, sizeof(buf), &off,	";%s",
+      scamper_addr_tostr(hop->hop_addr, tmp, sizeof(tmp)));
+
+  /*string_concat(buf, sizeof(buf), &off, ";%u;%u", hop->hop_probe_id,*/
+      /*hop->hop_probe_size);*/
+
+  string_concat(buf, sizeof(buf), &off, ";%s", timeval_tostr(&hop->hop_rtt,
+        tmp, sizeof(tmp)));
+
+  /*string_concat(buf, sizeof(buf), &off, ";%u;%u;%u", hop->hop_reply_ttl,*/
+      /*hop->hop_reply_tos, hop->hop_reply_size);*/
+
+  /*string_concat(buf, sizeof(buf), &off,	";%u", hop->hop_reply_ipid);*/
+
+  if(SCAMPER_TRACE_HOP_IS_ICMP(hop)) {
+
+    /*string_concat(buf, sizeof(buf), &off, ";%u;%u", hop->hop_icmp_type,*/
+        /*hop->hop_icmp_code);*/
+
+    if(SCAMPER_TRACE_HOP_IS_ICMP_Q(hop)) {
+
+      /*string_concat(buf, sizeof(buf), &off, ";%u;%u", hop->hop_icmp_q_ttl,*/
+          /*hop->hop_icmp_q_ipl);*/
+
+      /*if(SCAMPER_ADDR_TYPE_IS_IPV4(hop->hop_addr))*/
+        /*string_concat(buf, sizeof(buf), &off, ";%u", hop->hop_icmp_q_tos);*/
+    }
+
+    /*if(SCAMPER_TRACE_HOP_IS_ICMP_PTB(hop))*/
+        /*string_concat(buf, sizeof(buf), &off, "%u", hop->hop_icmp_nhmtu);*/
+  }
+  else {
+    /*string_concat(buf, sizeof(buf), &off, ";%u", hop->hop_tcp_flags); */
+  }
+
+  return strdup(buf);
+}
+
 int scamper_file_csv_trace_write(const scamper_file_t *sf,
-				  const scamper_trace_t *trace)
-{
+				  const scamper_trace_t *trace) {
+
   scamper_trace_hop_t *hop;
   int fd = scamper_file_getfd(sf);
   size_t wc, len, off = 0;
@@ -162,58 +161,53 @@ int scamper_file_csv_trace_write(const scamper_file_t *sf,
   if(fd != STDOUT_FILENO && (foff = lseek(fd, 0, SEEK_CUR)) == -1)
     return -1;
 
-  if((header = header_tostr(trace)) == NULL)
-    goto cleanup;
-  len = strlen(header);
+  /*if((header = header_tostr(trace)) == NULL)*/
+    /*goto cleanup;*/
+  /*len = strlen(header);*/
 
   for(i=trace->firsthop-1; i<trace->hop_count; i++)
     for(hop = trace->hops[i]; hop != NULL; hop = hop->hop_next)
       hopc++;
-  if(hopc > 0)
-    {
-      len += 11; /* , "hops":[] */
-      if((hops = malloc_zero(sizeof(char *) * hopc)) == NULL)
-	goto cleanup;
-      for(i=trace->firsthop-1, j=0; i<trace->hop_count; i++)
-	{
-	  for(hop = trace->hops[i]; hop != NULL; hop = hop->hop_next)
-	    {
+
+  if(hopc > 0) {
+    len += 11; /* , "hops":[] */
+    if((hops = malloc_zero(sizeof(char *) * hopc)) == NULL) goto cleanup;
+    for(i=trace->firsthop-1, j=0; i<trace->hop_count; i++) {
+      for(hop = trace->hops[i]; hop != NULL; hop = hop->hop_next) {
 	      if(j > 0) len++; /* , */
-	      if((hops[j] = hop_tostr(hop)) == NULL)
-		goto cleanup;
+	      if((hops[j] = hop_tostr(hop)) == NULL) goto cleanup;
 	      len += strlen(hops[j]);
+        puts(hops[j]);
 	      j++;
 	    }
-	}
     }
+  }
   len += 4; /* {}\n\0 */
+  exit(1);
 
   if((str = malloc(len)) == NULL)
     goto cleanup;
 
   string_concat(str, len, &off, "{%s", header);
-  if(hopc > 0)
-    {
-      string_concat(str, len, &off, ", \"hops\":[");
-      for(j=0; j<hopc; j++)
-	{
-	  if(j > 0) string_concat(str, len, &off, ",");
-	  string_concat(str, len, &off, "%s", hops[j]);
-	}
-      string_concat(str, len, &off, "]");
+
+  if(hopc > 0) {
+    string_concat(str, len, &off, ", \"hops\":[");
+    for(j=0; j<hopc; j++) {
+      if(j > 0) string_concat(str, len, &off, ",");
+      string_concat(str, len, &off, "%s", hops[j]);
     }
+    string_concat(str, len, &off, "]");
+  }
+
   string_concat(str, len, &off, "}\n");
   assert(off+1 == len);
 
-  if(write_wrap(fd, str, &wc, off) != 0)
-    {
-      if(fd != STDOUT_FILENO)
-	{
-	  if(ftruncate(fd, foff) != 0)
-	    goto cleanup;
-	}
-      goto cleanup;
+  if(write_wrap(fd, str, &wc, off) != 0) {
+    if(fd != STDOUT_FILENO) {
+      if(ftruncate(fd, foff) != 0) goto cleanup;
     }
+    goto cleanup;
+  }
 
   rc = 0; /* we succeeded */
 
