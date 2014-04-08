@@ -248,7 +248,7 @@ static void usage(uint32_t opt_mask)
   if((opt_mask & OPT_OPTION) != 0)
     {
       off = 0;
-      string_concat(buf, sizeof(buf), &off, "specify options [warts | text | json");
+      string_concat(buf, sizeof(buf), &off, "specify options [warts | text | json | csv");
       string_concat(buf, sizeof(buf), &off, " | outcopy | tsps | dlts");
       string_concat(buf, sizeof(buf), &off, " | rawtcp");
 #ifndef WITHOUT_DEBUGFILE
@@ -531,6 +531,8 @@ static int check_options(int argc, char *argv[])
 	  else if(strcasecmp(optarg, "warts") == 0)
 	    outtype = optarg;
 	  else if(strcasecmp(optarg, "json") == 0)
+	    outtype = optarg;
+	  else if(strcasecmp(optarg, "csv") == 0)
 	    outtype = optarg;
 	  else if(strcasecmp(optarg, "tsps") == 0)
 	    intype = optarg;

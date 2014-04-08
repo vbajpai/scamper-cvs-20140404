@@ -44,6 +44,7 @@ static const char rcsid[] =
 #include "trace/scamper_trace_text.h"
 #include "trace/scamper_trace_warts.h"
 #include "trace/scamper_trace_json.h"
+#include "trace/scamper_trace_csv.h"
 #include "ping/scamper_ping.h"
 #include "ping/scamper_ping_text.h"
 #include "ping/scamper_ping_warts.h"
@@ -73,6 +74,7 @@ static const char rcsid[] =
 #define SCAMPER_FILE_ARTS        1
 #define SCAMPER_FILE_WARTS       2
 #define SCAMPER_FILE_JSON        3
+#define SCAMPER_FILE_CSV         4
 
 typedef int (*write_obj_func_t)(scamper_file_t *sf, const void *);
 
@@ -210,6 +212,24 @@ static struct handler handlers[] = {
    NULL,                                   /* write_tracelb */
    NULL,                                   /* write_sting */
    scamper_file_json_dealias_write,        /* write_dealias */
+   NULL,                                   /* write_neighbourdisc */
+   NULL,                                   /* write_tbit */
+   NULL,                                   /* write_sniff */
+   NULL,                                   /* free_state */
+  },
+  {"csv",                                  /* type */
+   NULL,                                   /* detect */
+   NULL,                                   /* init_read */
+   NULL,                                   /* init_write */
+   NULL,                                   /* init_append */
+   NULL,                                   /* read */
+   scamper_file_csv_trace_write,           /* write_trace */
+   NULL,                                   /* write_cycle_start */
+   NULL,                                   /* write_cycle_stop */
+   NULL,                                   /* write_ping */
+   NULL,                                   /* write_tracelb */
+   NULL,                                   /* write_sting */
+   NULL,                                   /* write_dealias */
    NULL,                                   /* write_neighbourdisc */
    NULL,                                   /* write_tbit */
    NULL,                                   /* write_sniff */
