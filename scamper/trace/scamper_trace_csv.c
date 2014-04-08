@@ -64,6 +64,17 @@ static char *stop_reason_tostr(uint8_t reason, char *buf, size_t len) {
   return r[reason];
 }
 
+static char *header_tostr() {
+
+  char buf[512], tmp[128];
+  size_t off = 0;
+
+  string_concat(buf, sizeof(buf), &off, "%s\n",
+      "version;userID;timestamp;src;dst;method;status;ttl;hopaddr;rtt");
+
+  return strdup(buf);
+}
+
 static char *hop_tostr(const scamper_trace_t *trace,
                        scamper_trace_hop_t *hop) {
 
@@ -152,6 +163,7 @@ static char *hop_tostr(const scamper_trace_t *trace,
   /*string_concat(buf, sizeof(buf), &off,	", \"tos\":%u, \"probe_size\":%u",*/
 		/*trace->tos, trace->probe_size);*/
 
+  string_concat(buf, sizeof(buf), &off,	"\n", NULL);
   return strdup(buf);
 }
 
@@ -168,45 +180,36 @@ int scamper_file_csv_trace_write(const scamper_file_t *sf,
   if(fd != STDOUT_FILENO && (foff = lseek(fd, 0, SEEK_CUR)) == -1)
     return -1;
 
-  /*if((header = header_tostr(trace)) == NULL)*/
-    /*goto cleanup;*/
-  /*len = strlen(header);*/
+  if((header = header_tostr()) == NULL) goto cleanup;
+  len = strlen(header);
 
   for(i=trace->firsthop-1; i<trace->hop_count; i++)
     for(hop = trace->hops[i]; hop != NULL; hop = hop->hop_next)
       hopc++;
 
   if(hopc > 0) {
-    len += 11; /* , "hops":[] */
     if((hops = malloc_zero(sizeof(char *) * hopc)) == NULL) goto cleanup;
     for(i=trace->firsthop-1, j=0; i<trace->hop_count; i++) {
       for(hop = trace->hops[i]; hop != NULL; hop = hop->hop_next) {
-	      if(j > 0) len++; /* , */
-	      if((hops[j] = hop_tostr(trace, hop)) == NULL) goto cleanup;
-	      len += strlen(hops[j]);
-        puts(hops[j]);
+        if((hops[j] = hop_tostr(trace, hop)) == NULL) goto cleanup;
+        len += strlen(hops[j]);
 	      j++;
 	    }
     }
   }
-  len += 4; /* {}\n\0 */
-  exit(1);
+
+  len += 1; /* \0 */
 
   if((str = malloc(len)) == NULL)
     goto cleanup;
 
-  string_concat(str, len, &off, "{%s", header);
+  string_concat(str, len, &off, "%s", header);
 
   if(hopc > 0) {
-    string_concat(str, len, &off, ", \"hops\":[");
-    for(j=0; j<hopc; j++) {
-      if(j > 0) string_concat(str, len, &off, ",");
+    for(j=0; j<hopc; j++)
       string_concat(str, len, &off, "%s", hops[j]);
-    }
-    string_concat(str, len, &off, "]");
   }
 
-  string_concat(str, len, &off, "}\n");
   assert(off+1 == len);
 
   if(write_wrap(fd, str, &wc, off) != 0) {
@@ -219,13 +222,12 @@ int scamper_file_csv_trace_write(const scamper_file_t *sf,
   rc = 0; /* we succeeded */
 
  cleanup:
-  if(hops != NULL)
-    {
+  if(hops != NULL) {
       for(i=0; i<hopc; i++)
-	if(hops[i] != NULL)
-	  free(hops[i]);
+        if(hops[i] != NULL)
+          free(hops[i]);
       free(hops);
-    }
+  }
   if(header != NULL) free(header);
   if(str != NULL) free(str);
 
